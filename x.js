@@ -1,18 +1,34 @@
 const express = require("express");
-const requestIp = require("request-ip");
+const geoip = require("geoip-lite");
+const net = require("net");
 
 const app = express();
 
-// Create a middleware function to get the client's IP address.
-const getIp = (req, res, next) => {
-  req.ip = requestIp.getClientIp(req);
+// Middleware to get the client's IP address
+app.use((req, res, next) => {
+  req.clientIp = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
   next();
-};
+});
 
-// Add the middleware function to the Express server.
-app.use(getIp);
+app.get("/", (req, res) => {
+  const clientIp = req.clientIp;
 
-// Start the Express server.
-app.listen(3000, () => {
-  console.log("Server listening on port 3000");
+  // Normalize IPv6 address if it's an IPv6 address
+  const ipv6Address = net.isIPv6(clientIp) ? `[${clientIp}]` : clientIp;
+
+  // Use geoip-lite to get location information
+  const geo = geoip.lookup(clientIp);
+
+  const responseData = {
+    ipv4: clientIp,
+    ipv6: ipv6Address,
+    location: geo ? `${geo.city}, ${geo.region}, ${geo.country}` : "Unknown",
+  };
+
+  res.json(responseData);
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
 });
