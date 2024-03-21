@@ -6,7 +6,10 @@ const app = express();
 app.get("/", (req, res) => {
   // Extracting user agent and IP address from the request
   const userAgent = req.headers["user-agent"];
-  const ip = req.ip;
+  const ip =
+    req.headers["x-forwarded-for"] ||
+    req.headers["x-real-ip"] ||
+    req.connection.remoteAddress;
 
   // Parsing user agent string using useragent package
   const agent = useragent.parse(userAgent);
