@@ -2,7 +2,12 @@ const express = require("express");
 const app = express();
 
 app.get("/", (req, res) => {
-  const ipv6Address = req.socket.remoteAddress;
+  let ipv6Address = req.header("X-Forwarded-For");
+
+  if (!ipv6Address) {
+    ipv6Address = req.connection.remoteAddress;
+  }
+
   res.send(`Your IPv6 address: ${ipv6Address}`);
 });
 
