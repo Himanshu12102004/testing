@@ -1,39 +1,21 @@
 const express = require("express");
-const useragent = require("useragent");
-const crypto = require("crypto");
-
 const app = express();
+const Fingerprint = require("express-fingerprint");
 
-// Function to generate a unique hash for the device fingerprint
-function generateDeviceFingerprint(req) {
-  const userAgent = req.headers["user-agent"];
-  const agent = useragent.parse(userAgent);
-  const os = agent.os.family;
-  const browser = agent.toAgent();
-  const uniqueString = `${os}-${browser}`;
-  const hash = crypto.createHash("sha256").update(uniqueString).digest("hex");
-  return hash;
-}
+app.use(
+  Fingerprint({
+    parameters: [
+      Fingerprint.useragent,
+      Fingerprint.acceptHeaders,
+      Fingerprint.geoip,
+    ],
+  })
+);
 
-app.get("/", (req, res) => {
-  const userAgent = req.headers["user-agent"];
-  const agent = useragent.parse(userAgent);
-  const ip = req.ip;
-  const os = agent.os.family;
-  const browser = agent.toAgent();
-  const deviceFingerprint = generateDeviceFingerprint(req);
-
-  console.log("User Agent:", userAgent);
-  console.log("Parsed User Agent:", agent);
-  console.log("OS:", os);
-  console.log("Browser:", browser);
-
-  console.log("Device Fingerprint:", deviceFingerprint);
-
-  res.json({
-    device: `${userAgent}${os}${browser}`,
-    deviceFingerprint,
-  });
+app.get("*", function (req, res, next) {
+  // Fingerprint object
+  console.log(req.fingerprint);
+  res.json({ res3: req.fingerprint });
 });
 
 app.listen(3000, () => {
