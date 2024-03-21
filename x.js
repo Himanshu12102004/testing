@@ -1,34 +1,41 @@
-const express = require("express");
-const geoip = require("geoip-lite");
-const net = require("net");
+const http = require("http");
+const os = require("os");
+const { parse } = require("querystring");
 
-const app = express();
+const server = http.createServer((req, res) => {
+  // Extracting MAC Address
+  const macAddress = getMACAddress();
 
-// Middleware to get the client's IP address
-app.use((req, res, next) => {
-  req.clientIp = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
-  next();
+  // Extracting IP Address
+  const ipAddress = req.connection.remoteAddress;
+
+  // Parsing UUID from request headers
+  const uuid = req.headers["uuid"];
+
+  // Parsing IMEI from request query parameters
+  const queryData = parse(req.url.split("?")[1]);
+  const imei = queryData["imei"];
+
+  res.writeHead(200, { "Content-Type": "text/plain" });
+  res.write(`MAC Address: ${macAddress}\n`);
+  res.write(`IP Address: ${ipAddress}\n`);
+  res.write(`UUID: ${uuid || "Not available"}\n`);
+  res.write(`IMEI: ${imei || "Not available"}\n`);
+  res.end();
 });
 
-app.get("/", (req, res) => {
-  const clientIp = req.clientIp;
-
-  // Normalize IPv6 address if it's an IPv6 address
-  const ipv6Address = net.isIPv6(clientIp) ? `[${clientIp}]` : clientIp;
-
-  // Use geoip-lite to get location information
-  const geo = geoip.lookup(clientIp);
-
-  const responseData = {
-    ipv4: clientIp,
-    ipv6: ipv6Address,
-    location: geo ? `${geo.city}, ${geo.region}, ${geo.country}` : "Unknown",
-  };
-
-  res.json(responseData);
+server.listen(3000, () => {
+  console.log("Server running at http://localhost:3000/");
 });
 
-const PORT = 3000;
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
-});
+function getMACAddress() {
+  const interfaces = os.networkInterfaces();
+  for (const key in interfaces) {
+    const iface = interfaces[key];
+    const mac = iface.find(
+      (details) => !details.internal && details.mac !== "00:00:00:00:00:00"
+    );
+    if (mac) return mac.mac;
+  }
+  return "Not available";
+}
